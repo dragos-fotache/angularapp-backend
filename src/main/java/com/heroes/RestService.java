@@ -2,6 +2,7 @@ package com.heroes;
 
 import java.sql.SQLException;
 import java.util.Collection;
+import java.util.List;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -27,10 +28,10 @@ public class RestService {
 	@GET
 	@Produces("application/json")
 	@Path("/articles/{first}/{rows}/{sortField}/{sortOrder}")
-	public Response getArticlesSlice(@PathParam("first") int first, 
-										@PathParam("rows") int rows,
-										@PathParam("sortField") String sortFieldParam,
-										@PathParam("sortOrder") String sortOrder) throws ClassNotFoundException, SQLException {
+	public Response getArticlesSliceAndCount(@PathParam("first") int first, 
+											  @PathParam("rows") int rows,
+											  @PathParam("sortField") String sortFieldParam,
+											  @PathParam("sortOrder") String sortOrder) throws ClassNotFoundException, SQLException {
 		
 		String sortField;
 		if ("undefined".equals(sortFieldParam)) {
@@ -38,12 +39,29 @@ public class RestService {
 		} else {
 			sortField = sortFieldParam;
 		}
-		Collection<Article> output = ArticleService.INSTANCE.getArticlesSlice(first, rows, sortField, "desc".equals(sortOrder) ? true : false);
+		List<Article> articles = ArticleService.INSTANCE.getArticlesSlice(first, rows, sortField, "desc".equals(sortOrder) ? true : false);
+		int count = ArticleService.INSTANCE.getArticlesCount();
+		
+		ArticleSliceAndCount asc = new ArticleSliceAndCount(articles, count);
 		
 		return Response
 				.status(200)
 				.header("Access-Control-Allow-Origin", "*")
-				.entity(output)
+				.entity(asc)
+				.build();
+	}
+	
+	@GET
+	@Produces("application/json")
+	@Path("articles/count")
+	public Response getArticleCount() throws SQLException {
+		
+		int count = ArticleService.INSTANCE.getArticlesCount();
+		
+		return Response
+				.status(200)
+				.header("Access-Control-Allow-Origin", "*")
+				.entity(count)
 				.build();
 	}
 }
