@@ -13,9 +13,12 @@ public enum ArticleService {
 
 	INSTANCE;
 
+	private static final String JDBC_CONNECTOR = "com.mysql.jdbc.Driver";
+	private static final String CONNECTION_STRING = "jdbc:mysql://localhost:3306/drugs?user=webapp&password=1234";
+
 	ArticleService() {
 		try {
-			Class.forName("org.sqlite.JDBC");
+			Class.forName(JDBC_CONNECTOR);
 		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
 		}
@@ -23,7 +26,15 @@ public enum ArticleService {
 
 	public List<Article> getArticles() throws SQLException, ClassNotFoundException {
 		Connection c = null;
-		c = DriverManager.getConnection("jdbc:sqlite:test.db");
+		c = DriverManager.getConnection(CONNECTION_STRING);
+
+		List<Article> result = getArticles(c);
+		c.close();
+
+		return result;
+	}
+	
+	public List<Article> getArticles(Connection c) throws SQLException, ClassNotFoundException {
 
 		List<Article> result = new ArrayList<Article>();
 		
@@ -36,69 +47,107 @@ public enum ArticleService {
 			int id = rs.getInt(1);
 			String pzn = rs.getString(2);
 			String name = rs.getString(3);
-			String supplier = rs.getString(4);
-			String packing = rs.getString(5);
+			String provider = rs.getString(4);
+			String dosage = rs.getString(5);
+			String packaging = rs.getString(6);
+			Double sellingPrice = rs.getDouble(7);
+			Double purchasingPrice = rs.getDouble(8);
+			Boolean narcotic = rs.getBoolean(9);
+			Integer stock = rs.getInt(10);
 
-			result.add(new Article(id, pzn, name, supplier, packing));
+			result.add(new Article(id, pzn, name, provider, dosage, packaging, sellingPrice, purchasingPrice, narcotic, stock));
 		}
 
 		rs.close();
 		ps.close();
-		c.close();
 
 		return result;
 	}
+	
+	public ArticleSliceAndCount getArticlesSliceAndCount(int first, int rows, String sortField, boolean desc, String searchString) throws SQLException {
+		
+		ArticleSliceAndCount articleSliceAndCount = null;
+		
+		try (Connection c = DriverManager.getConnection(CONNECTION_STRING)) {
+		
+			List<Article> articles = getArticlesSlice(first, rows, sortField, desc, searchString, c);
+			int count = getArticlesCount(searchString, c);
 
-	public List<Article> getArticlesSlice(int first, int rows, String sortField, boolean desc)
-			throws SQLException, ClassNotFoundException {
-		Connection c = null;
-		c = DriverManager.getConnection("jdbc:sqlite:test.db");
+			articleSliceAndCount = new ArticleSliceAndCount(articles, count);
+		} 
+		
+		return articleSliceAndCount;
+	}
+
+	public List<Article> getArticlesSlice(int first, int rows, String sortField, boolean desc, String searchString, Connection c)
+			throws SQLException {
 
 		List<Article> result = new ArrayList<Article>();
 		
-		String sqlAsc = "SELECT * FROM ARTICLE ORDER BY %s LIMIT ? OFFSET ?";
-		String sqlDesc = "SELECT * FROM ARTICLE ORDER BY %s DESC LIMIT ? OFFSET ?";
+		String sqlAsc = "SELECT * FROM ARTICLE WHERE name like '%%%s%%' ORDER BY %s LIMIT ?, ?";
+		String sqlDesc = "SELECT * FROM ARTICLE WHERE name like '%%%s%%' ORDER BY %s DESC LIMIT ?, ?";
 
-		String sql = String.format(desc ? sqlDesc : sqlAsc, sortField);
+		String sql = desc ? sqlDesc : sqlAsc;
+		
+		sql = String.format(sql, searchString, sortField);
 
-		PreparedStatement ps = c.prepareStatement(sql);
+		PreparedStatement ps = null;
+		ResultSet rs = null;
+		
+		try {
+			ps = c.prepareStatement(sql);
 
-		ps.setInt(1, rows);
-		ps.setInt(2, first);
+			ps.setInt(1, first);
+			ps.setInt(2, rows);
 
-		ResultSet rs = ps.executeQuery();
+			rs = ps.executeQuery();
 
-		while (rs.next()) {
-			int id = rs.getInt(1);
-			String pzn = rs.getString(2);
-			String name = rs.getString(3);
-			String supplier = rs.getString(4);
-			String packing = rs.getString(5);
+			while (rs.next()) {
+				int id = rs.getInt(1);
+				String pzn = rs.getString(2);
+				String name = rs.getString(3);
+				String provider = rs.getString(4);
+				String dosage = rs.getString(5);
+				String packaging = rs.getString(6);
+				Double sellingPrice = rs.getDouble(7);
+				Double purchasingPrice = rs.getDouble(8);
+				Boolean narcotic = rs.getBoolean(9);
+				Integer stock = rs.getInt(10);
 
-			result.add(new Article(id, pzn, name, supplier, packing));
+				result.add(new Article(id, pzn, name, provider, dosage, packaging, sellingPrice, purchasingPrice, narcotic, stock));
+			}
+		} finally {
+			if (rs != null)
+				rs.close();
+			if (ps != null)
+				ps.close();
 		}
 
-		rs.close();
-		ps.close();
-		c.close();
 
 		return result;
 	}
-
-	public int getArticlesCount() throws SQLException {
+	
+	public int getArticlesCount(String searchString, Connection c) throws SQLException {
 		
 		int result = 0;
 		
-		Connection c = null;
-		c = DriverManager.getConnection("jdbc:sqlite:test.db");
+		String sql = "SELECT COUNT(*) FROM ARTICLE WHERE name like '%%%s%%'";
+		sql = String.format(sql, searchString);
+		Statement st = null;
+		ResultSet rs = null;
 		
-		String sql = "SELECT COUNT(*) FROM ARTICLE";
-		Statement st = c.createStatement();
-		
-		ResultSet rs = st.executeQuery(sql);
-		
-		while (rs.next()) {
-			result = rs.getInt(1);
+		try {
+			st = c.createStatement();
+			rs = st.executeQuery(sql);
+			
+			while (rs.next()) {
+				result = rs.getInt(1);
+			}
+		} finally {
+			if (rs != null)
+				rs.close();
+			if (st != null)
+				st.close();
 		}
 		
 		return result;
