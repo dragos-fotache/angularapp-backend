@@ -1,5 +1,8 @@
 package com.heroes;
 
+import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlRootElement;
+
 public class Article {
 
 	private Integer id;
@@ -26,8 +29,10 @@ public class Article {
 		this.narcotic = narcotic;
 		this.stock = stock;
 	}
-
 	
+	public Article() {
+		
+	}
 	
 	public String getPzn() {
 		return pzn;

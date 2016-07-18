@@ -3,14 +3,17 @@ package com.heroes;
 import java.sql.SQLException;
 import java.util.Collection;
 
+import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
+import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Response;
 
 @Path("/")
-public class RestService {
+public class RestService extends org.glassfish.jersey.server.ResourceConfig {
+	
 	@GET
 	@Produces("application/json")
 	@Path("/articles")
@@ -19,7 +22,6 @@ public class RestService {
 		
 		return Response
 					.status(200)
-					.header("Access-Control-Allow-Origin", "*")
 					.entity(output)
 					.build();
 	}
@@ -55,9 +57,46 @@ public class RestService {
 		
 		return Response
 				.status(200)
-				.header("Access-Control-Allow-Origin", "*")
 				.entity(result)
 				.build();
 	}
 	
+	@POST
+	@Consumes("application/json")
+	@Produces("application/json")
+	@Path("/articles/new")
+	public Response newArticle(Article article) throws SQLException {
+		
+		ArticleService.INSTANCE.newArticle(article);
+		
+		return Response
+				.status(200)
+				.build();
+	}
+	
+	@POST
+	@Consumes("application/json")
+	@Produces("application/json")
+	@Path("/articles/update")
+	public Response updateArticle(Article article) throws SQLException {
+		
+		ArticleService.INSTANCE.updateArticle(article);
+		
+		return Response
+				.status(200)
+				.build();
+	}
+	
+	@POST
+	@Produces("application/json")
+	@Path("/articles/delete/{id}")
+	public Response deleteArticle(@PathParam("id") int id) throws SQLException {
+		
+		ArticleService.INSTANCE.deleteArticle(id);
+		
+		return Response
+				.status(200)
+				.build();
+	}
+
 }
